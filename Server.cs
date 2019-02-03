@@ -11,10 +11,10 @@ namespace _3_In_A_Row_Server
 {
     class Server
     {
-        private static readonly string ipAddr = "192.168.1.176";
+        private static readonly string ipAddr = "192.168.1.234";
 
-        private static readonly string path = AppDomain.CurrentDomain.BaseDirectory + "Records.txt";
-        private static readonly string SoundLocation = AppDomain.CurrentDomain.BaseDirectory + "win.wav";
+        private static readonly string path = Environment.CurrentDirectory + "Records.txt";
+        private static readonly string SoundLocation = Environment.CurrentDirectory + "win.wav";
 
         static char[,] grid = new char[3, 3]
             {
@@ -28,6 +28,8 @@ namespace _3_In_A_Row_Server
         static System.Media.SoundPlayer player = new System.Media.SoundPlayer(SoundLocation);
         public static void Main(string[] args)
         {
+            if (!File.Exists(path))
+                File.Create(path);
             IPAddress ip = IPAddress.Parse(ipAddr);
             TcpListener listener = new TcpListener(ip, 80);
             listener.Start();
@@ -50,15 +52,16 @@ namespace _3_In_A_Row_Server
                     Console.Write("\nChoose a column: ");
                     int column = Convert.ToInt32(Console.ReadLine()) - 1;
                     Console.WriteLine("");
-                    UpdateIndex(row, column);
-                    byte[] send = EncodeData(GridToString(grid));
-                    s.Send(send);
+                    UpdateIndex(row, column, s);
+                    //byte[] send = EncodeData(GridToString(grid));
+                    //s.Send(send);
                 }
                 else
                 {
                     Console.WriteLine("Awaiting Opponent's response...");
                     s.Receive(b);
                     grid = StringToGrid(DecodeData(b));
+                    turn = (turn == 'O' ? 'X' : 'O');
                 }
                 Console.Clear();
                 Console.WriteLine("");
@@ -163,13 +166,16 @@ namespace _3_In_A_Row_Server
             }
         }
 
-        public static void UpdateIndex(int row, int column)
+        public static void UpdateIndex(int row, int column, Socket s)
         {
             try
             {
                 if (grid[row, column].Equals(' '))
                 {
                     grid[row, column] = (turn == 'X' ? 'X' : 'O');
+                    byte[] send = EncodeData(GridToString(grid));
+                    s.Send(send);
+                    turn = (turn == 'O' ? 'X' : 'O');
                 }
                 else if (!grid[row, column].Equals(' '))
                 {
@@ -196,9 +202,10 @@ namespace _3_In_A_Row_Server
                 Console.WriteLine("   --Game Over--\n" +
                                   "      {0}'s Win!   ", turn);
                 if (turn == 'X')
-                    player.Play();
+                    if(File.Exists(SoundLocation))
+                        player.Play();
             }
-            turn = (turn == 'O' ? 'X' : 'O');
+            //turn = (turn == 'O' ? 'X' : 'O');
         }
     }
 }
